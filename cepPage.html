@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Document</title>
+</head>
+<body>
+    <div class="flex justify-center items-center p-10">
+        <h1 class="text-4xl font-semibold">BUSCA DE CEP - DISTÂNCIA ENTRE PONTOS</h1>
+    </div>
+    <div class="grid grid-cols-3 p-12 gap-10 justify-center items-center">
+        <input type="text" id="cep1" class="border-2 rounded-[10px] border-gray-300 p-2" placeholder="Digite o CEP 1">
+        <input type="text" id="cep2" class="border-2 rounded-[10px] border-gray-300 p-2" placeholder="Digite o CEP 2">
+        <button id="buscarBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-[10px]">Buscar</button>
+        <p class="text-2xl font-semibold" id="distance">Distância entre os pontos: </p>
+    </div>
+
+    <script>
+        const cep_validation = (cep) => {
+            cep = cep.replace(/\D/g, '');
+            if (cep.length !== 8) {
+                throw `CEP "${cep}" inválido`;
+            }
+            return cep;
+        }
+
+        const apiCep = (cep) => `https://brasilapi.com.br/api/cep/v2/${cep}.json`;
+
+        const getCep = async (cep) => {
+            try {
+                console.log(`Buscando dados para o CEP: ${cep}`);
+                const response = await fetch(apiCep(cep));
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar o CEP: ' + response.statusText);
+                }
+                const cepJson = await response.json();
+                console.log(`Dados do CEP: ${JSON.stringify(cepJson)}`);
+                return cepJson;
+            } catch (error) {
+                console.error('Erro:', error.message);
+                alert(`Erro ao buscar CEP: ${error.message}`);
+                return null;
+            }
+        }
+
+        const calculateDistance = (lat1, lon1, lat2, lon2) => {
+            lat1 = lat1 * Math.PI / 180;
+            lon1 = lon1 * Math.PI / 180;
+            lat2 = lat2 * Math.PI / 180;
+            lon2 = lon2 * Math.PI / 180;
+
+            const dLat = lat2 - lat1;
+            const dLon = lon2 - lon1;
+
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1) * Math.cos(lat2) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            const R = 6371;
+
+            return R * c;
+        }
+
+
+        const searchCep = async () => {
+            const cep1 = document.getElementById('cep1').value;
+            const cep2 = document.getElementById('cep2').value;
+
+            try {
+                const validCep1 = cep_validation(cep1);
+                const validCep2 = cep_validation(cep2);
+
+                const dataCep1 = await getCep(validCep1);
+                const dataCep2 = await getCep(validCep2);
+
+                if (dataCep1 && dataCep2) {
+                    const lat1 = dataCep1.location.coordinates.latitude;
+                    const lon1 = dataCep1.location.coordinates.longitude;
+                    const lat2 = dataCep2.location.coordinates.latitude;
+                    const lon2 = dataCep2.location.coordinates.longitude;
+
+                    const distance = calculateDistance(lat1, lon1, lat2, lon2);
+
+                    if (isNaN(distance)) {
+                        document.getElementById('distance').innerText = 'Erro no cálculo da distância.';
+                    } else {
+                       distance >= 1 ? document.getElementById('distance').innerText = `Distância entre os pontos: ${distance.toFixed(2)} km` : document.getElementById('distance').innerText = `Distância entre os pontos: ${distance.toFixed(2) * 100} m`;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro no processamento:', error);
+                alert(error);
+            }
+        }
+
+        document.getElementById('buscarBtn').addEventListener('click', searchCep);
+    </script>
+</body>
+</html>
